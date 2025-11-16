@@ -19,9 +19,12 @@ class AuthService {
       // Por ahora, simulamos una respuesta exitosa
       // Si el email contiene "host", lo tratamos como host
       final role = email.toLowerCase().contains('host') ? 'host' : 'guest';
-      
+
+      // Assign a distinct id per email so hosts and guests don't collide
+      final id = '${role}_${email.toLowerCase()}';
+
       _currentUser = User(
-        id: '123',
+        id: id,
         email: email,
         name: email.split('@')[0],
         role: role,
@@ -53,8 +56,9 @@ class AuthService {
       // );
       
       // Por ahora, simulamos una respuesta exitosa
+      final id = 'guest_${email.toLowerCase()}';
       _currentUser = User(
-        id: '456',
+        id: id,
         email: email,
         name: name,
         role: 'guest',

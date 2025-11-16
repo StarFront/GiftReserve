@@ -31,6 +31,7 @@ class GiftService {
       quantity: gift.quantity,
       hostId: gift.hostId,
       isReserved: gift.isReserved,
+      reservedBy: gift.reservedBy,
       createdAt: gift.createdAt,
     );
     _gifts.insert(0, newGift);
@@ -51,6 +52,7 @@ class GiftService {
         quantity: updated.quantity,
         hostId: updated.hostId,
         isReserved: updated.isReserved,
+        reservedBy: updated.reservedBy,
         createdAt: updated.createdAt,
       );
       _saveToPrefs();

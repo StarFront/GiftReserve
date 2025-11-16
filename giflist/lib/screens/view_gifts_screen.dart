@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/screens/add_gift_screen.dart';
+import 'package:giflist/screens/gift_detail_screen.dart';
 import 'package:giflist/services/gift_service.dart';
 
 class ViewGiftsScreen extends StatefulWidget {
@@ -44,91 +45,97 @@ class _ViewGiftsScreenState extends State<ViewGiftsScreen> {
   }
 
   Widget _buildTile(Gift g) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image area (larger)
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[200],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: g.imageData != null
-                    ? Image.memory(g.imageData!, fit: BoxFit.cover)
-                    : (g.imageUrl != null && g.imageUrl!.startsWith('http')
-                        ? Image.network(g.imageUrl!, fit: BoxFit.cover)
-                        : Center(child: Text(g.imageUrl != null ? g.imageUrl!.substring(0, 1) : '?'))),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(g.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                      // Availability badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: g.isReserved ? Colors.orange[200] : Colors.green[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(g.isReserved ? 'Reservado' : 'Disponible', style: const TextStyle(fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(g.description, maxLines: 3, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 8),
-                  Text('Precio: ${g.price} • Cant: ${g.quantity}', style: TextStyle(color: Colors.grey[700])),
-                ],
-              ),
-            ),
-            // Actions
-            Column(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                  onPressed: () => _onEdit(g),
+    return InkWell(
+      onTap: () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => GiftDetailScreen(gift: g)));
+        _loadGifts();
+      },
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image area (larger)
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey[200],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                  onPressed: () => showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Eliminar regalo'),
-                      content: const Text('¿Estás seguro de eliminar este regalo?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _onDelete(g.id!);
-                          },
-                          child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: g.imageData != null
+                      ? Image.memory(g.imageData!, fit: BoxFit.cover)
+                      : (g.imageUrl != null && g.imageUrl!.startsWith('http')
+                          ? Image.network(g.imageUrl!, fit: BoxFit.cover)
+                          : Center(child: Text(g.imageUrl != null ? g.imageUrl!.substring(0, 1) : '?'))),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(g.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        // Availability badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: g.isReserved ? Colors.orange[200] : Colors.green[200],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(g.isReserved ? 'Reservado' : 'Disponible', style: const TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(g.description, maxLines: 3, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 8),
+                    Text('Precio: ${g.price}', style: TextStyle(color: Colors.grey[700])),
+                  ],
                 ),
-              ],
-            ),
-          ],
+              ),
+              // Actions
+              Column(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                    onPressed: () => _onEdit(g),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Eliminar regalo'),
+                        content: const Text('¿Estás seguro de eliminar este regalo?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _onDelete(g.id!);
+                            },
+                            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

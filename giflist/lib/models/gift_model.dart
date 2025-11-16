@@ -12,6 +12,7 @@ class Gift {
   final int quantity;
   final String hostId;
   final bool isReserved;
+  final String? reservedBy;
   final DateTime createdAt;
 
   Gift({
@@ -25,6 +26,7 @@ class Gift {
     required this.quantity,
     required this.hostId,
     this.isReserved = false,
+    this.reservedBy,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -49,6 +51,7 @@ class Gift {
       quantity: json['quantity'] as int,
       hostId: json['hostId'] as String,
       isReserved: json['isReserved'] as bool? ?? false,
+      reservedBy: json['reservedBy'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
@@ -67,6 +70,7 @@ class Gift {
       'quantity': quantity,
       'hostId': hostId,
       'isReserved': isReserved,
+      'reservedBy': reservedBy,
       'createdAt': createdAt.toIso8601String(),
     };
   }

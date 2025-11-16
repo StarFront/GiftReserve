@@ -3,6 +3,7 @@ import 'package:giflist/services/auth_service.dart';
 import 'package:giflist/screens/add_gift_screen.dart';
 import 'package:giflist/screens/view_gifts_screen.dart';
 import 'package:giflist/screens/view_gifts_guest_screen.dart';
+import 'package:giflist/screens/view_my_reservations_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final AuthService _authService = AuthService();
@@ -209,10 +210,7 @@ class HomeScreen extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
             onPressed: () {
-              // TODO: Navegar a mis reservas
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Función en desarrollo')),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ViewMyReservationsScreen()));
             },
           ),
           const SizedBox(height: 56),
