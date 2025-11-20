@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:giflist/services/auth_service.dart';
+import 'package:giflist/services/auth_api.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -9,7 +9,9 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final AuthService _authService = AuthService();
+  final AuthApi _authApi = AuthApi();
+
+
 
   // Controladores Login
   final _loginEmailController = TextEditingController();
@@ -42,6 +44,104 @@ class _AuthScreenState extends State<AuthScreen> {
     _registerConfirmPasswordController.dispose();
     super.dispose();
   }
+  void _showVerificationDialog({required String email}) {
+  final codeController = TextEditingController();
+  bool isLoading = false;
+  String? errorMessage;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text("Verificar cuenta"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Revisa el correo $email y escribe el código que te llegó.",
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: codeController,
+                  decoration: const InputDecoration(
+                    labelText: "Código de verificación",
+                    prefixIcon: Icon(Icons.verified_outlined),
+                  ),
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 10),
+                  Text(errorMessage!,
+                      style: const TextStyle(color: Colors.red)),
+                ]
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: const Text("Reenviar código"),
+                onPressed: () async {
+                  try {
+                    await _authApi.resendCode(email: email);
+                    setState(() => errorMessage = "Código reenviado ✔️");
+                  } catch (e) {
+                    setState(() => errorMessage = e.toString());
+                  }
+                },
+              ),
+              TextButton(
+                child: const Text("Cancelar"),
+                onPressed: () => Navigator.pop(context),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        setState(() => isLoading = true);
+                        try {
+                          await _authApi.confirmAccount(
+                            email: email,
+                            code: codeController.text.trim(),
+                          );
+
+                          if (mounted) {
+                            Navigator.pop(context); // cerrar dialogo
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Cuenta verificada ✔️"),
+                              ),
+                            );
+                            await _authApi.setCurrentUser(
+                              email: email,
+                              name: email.split('@').first,
+                            );
+                            // Navegar al home después de verificar la cuenta
+                            Navigator.pushReplacementNamed(context, '/home');
+                          }
+                        } catch (e) {
+                          setState(() =>
+                              errorMessage = e.toString().replaceFirst("Exception: ", ""));
+                        } finally {
+                          setState(() => isLoading = false);
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Confirmar"),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
   // Validar email
   bool _isValidEmail(String email) {
@@ -70,18 +170,24 @@ class _AuthScreenState extends State<AuthScreen> {
         throw Exception('La contraseña debe tener al menos 6 caracteres');
       }
 
-      await _authService.login(
+      await _authApi.login(
         email: _loginEmailController.text,
         password: _loginPasswordController.text,
       );
+      
 
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
       }
     } catch (e) {
-      setState(() {
-        _loginError = e.toString().replaceFirst('Exception: ', '');
-      });
+      final err = e.toString();
+      if (err.contains('Usuario no confirmado')) {
+        _showVerificationDialog(email: _loginEmailController.text);
+      } else {
+        setState(() {
+          _loginError = err.replaceFirst('Exception: ', '');
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -121,15 +227,13 @@ class _AuthScreenState extends State<AuthScreen> {
         throw Exception('Las contraseñas no coinciden');
       }
 
-      await _authService.register(
+      await _authApi.register(
         email: _registerEmailController.text,
         name: _registerNameController.text,
         password: _registerPasswordController.text,
       );
-
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
+      // 👉 Mostrar modal para verificar
+      _showVerificationDialog(email: _registerEmailController.text);
     } catch (e) {
       setState(() {
         _registerError = e.toString().replaceFirst('Exception: ', '');

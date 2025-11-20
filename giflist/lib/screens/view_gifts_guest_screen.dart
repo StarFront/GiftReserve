@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/gift_service.dart';
-import 'package:giflist/services/auth_service.dart';
+import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/gift_detail_screen.dart';
 
 class ViewGiftsGuestScreen extends StatefulWidget {
@@ -13,7 +13,7 @@ class ViewGiftsGuestScreen extends StatefulWidget {
 
 class _ViewGiftsGuestScreenState extends State<ViewGiftsGuestScreen> {
   final GiftService _giftService = giftService;
-  final AuthService _authService = AuthService();
+  final AuthApi _authApi = AuthApi();
   List<Gift> _gifts = [];
 
   @override
@@ -29,7 +29,7 @@ class _ViewGiftsGuestScreenState extends State<ViewGiftsGuestScreen> {
   }
 
   void _toggleReservation(Gift g) {
-    final user = _authService.getCurrentUser();
+    final user = _authApi.getCurrentUser();
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Debes iniciar sesión para reservar')),
@@ -194,7 +194,7 @@ class _ViewGiftsGuestScreenState extends State<ViewGiftsGuestScreen> {
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),
             onPressed: () {
-              _authService.logout();
+              _authApi.logout();
               Navigator.of(context).pushReplacementNamed('/auth');
             },
           ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/gift_service.dart';
-import 'package:giflist/services/auth_service.dart';
+import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/gift_detail_screen.dart';
 
 class ViewMyReservationsScreen extends StatefulWidget {
@@ -13,7 +13,7 @@ class ViewMyReservationsScreen extends StatefulWidget {
 
 class _ViewMyReservationsScreenState extends State<ViewMyReservationsScreen> {
   final GiftService _giftService = giftService;
-  final AuthService _authService = AuthService();
+  final AuthApi _authApi = AuthApi();
   List<Gift> _my = [];
 
   @override
@@ -23,7 +23,7 @@ class _ViewMyReservationsScreenState extends State<ViewMyReservationsScreen> {
   }
 
   void _loadMy() {
-    final user = _authService.getCurrentUser();
+    final user = _authApi.getCurrentUser();
     if (user == null) {
       setState(() => _my = []);
       return;
@@ -34,7 +34,7 @@ class _ViewMyReservationsScreenState extends State<ViewMyReservationsScreen> {
   }
 
   void _cancelReservation(Gift g) {
-    final user = _authService.getCurrentUser();
+    final user = _authApi.getCurrentUser();
     if (user == null) return;
     if (g.reservedBy != user.id) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No puedes cancelar esta reserva')));

@@ -4,6 +4,7 @@ class User {
   final String name;
   final String role; // 'host' o 'guest'
   final String? profileImage;
+  final String? token; // ADD THIS
 
   User({
     required this.id,
@@ -11,6 +12,7 @@ class User {
     required this.name,
     required this.role,
     this.profileImage,
+    this.token,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {

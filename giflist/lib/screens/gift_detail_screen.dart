@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/gift_service.dart';
-import 'package:giflist/services/auth_service.dart';
+import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/add_gift_screen.dart';
 
 class GiftDetailScreen extends StatefulWidget {
@@ -14,7 +14,7 @@ class GiftDetailScreen extends StatefulWidget {
 
 class _GiftDetailScreenState extends State<GiftDetailScreen> {
   final GiftService _giftService = giftService;
-  final AuthService _authService = AuthService();
+  final AuthApi _authApi = AuthApi();
   late Gift _gift;
   bool _loading = false;
 
@@ -46,7 +46,7 @@ class _GiftDetailScreenState extends State<GiftDetailScreen> {
   }
 
   Future<void> _onAction() async {
-    final user = _authService.getCurrentUser();
+    final user = _authApi.getCurrentUser();
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes iniciar sesión')));
       return;
@@ -102,7 +102,7 @@ class _GiftDetailScreenState extends State<GiftDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.getCurrentUser();
+    final user = _authApi.getCurrentUser();
     final canCancel = _gift.isReserved && _gift.reservedBy != null && user != null && _gift.reservedBy == user.id;
     final canReserve = !_gift.isReserved && user != null;
     final isHost = user != null && user.id == _gift.hostId;

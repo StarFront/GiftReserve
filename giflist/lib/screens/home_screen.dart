@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:giflist/services/auth_service.dart';
+import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/add_gift_screen.dart';
 import 'package:giflist/screens/view_gifts_screen.dart';
 import 'package:giflist/screens/view_gifts_guest_screen.dart';
 import 'package:giflist/screens/view_my_reservations_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  final AuthService _authService = AuthService();
+  final AuthApi _authApi = AuthApi();
 
   HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.getCurrentUser();
+    final user = _authApi.getCurrentUser();
     final isHost = user?.role == 'host';
 
     return Scaffold(
@@ -24,7 +24,7 @@ class HomeScreen extends StatelessWidget {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
-                _authService.logout();
+                _authApi.logout();
                 Navigator.of(context).pushReplacementNamed('/auth');
               }
             },

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
-import 'package:giflist/services/auth_service.dart';
+import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/services/gift_service.dart';
 
 class AddGiftScreen extends StatefulWidget {
@@ -15,7 +15,7 @@ class AddGiftScreen extends StatefulWidget {
 }
 
 class _AddGiftScreenState extends State<AddGiftScreen> {
-  final AuthService _authService = AuthService();
+  final AuthApi _authApi = AuthApi();
   final GiftService _giftService = giftService;
 
   // Controllers
@@ -98,7 +98,7 @@ class _AddGiftScreenState extends State<AddGiftScreen> {
       final parsedPrice = double.parse(_priceController.text);
       if (parsedPrice <= 0) throw Exception('El precio debe ser un número positivo');
 
-      final user = _authService.getCurrentUser();
+      final user = _authApi.getCurrentUser();
       if (user == null) throw Exception('Usuario no autenticado');
 
       final gift = Gift(
