@@ -10,7 +10,6 @@ class Gift {
   final String? productLink;
   final double price;
   final int quantity;
-  final String hostId;
   final bool isReserved;
   final String? reservedBy;
   final DateTime createdAt;
@@ -24,7 +23,6 @@ class Gift {
     this.productLink,
     required this.price,
     required this.quantity,
-    required this.hostId,
     this.isReserved = false,
     this.reservedBy,
     DateTime? createdAt,
@@ -49,7 +47,6 @@ class Gift {
       productLink: json['productLink'] as String?,
       price: (json['price'] as num).toDouble(),
       quantity: json['quantity'] as int,
-      hostId: json['hostId'] as String,
       isReserved: json['isReserved'] as bool? ?? false,
       reservedBy: json['reservedBy'] as String?,
       createdAt: json['createdAt'] != null
@@ -68,7 +65,6 @@ class Gift {
       'productLink': productLink,
       'price': price,
       'quantity': quantity,
-      'hostId': hostId,
       'isReserved': isReserved,
       'reservedBy': reservedBy,
       'createdAt': createdAt.toIso8601String(),

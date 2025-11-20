@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/gift_service.dart';
+import 'package:giflist/services/gift_remote_service.dart';
 import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/add_gift_screen.dart';
 
@@ -15,6 +16,7 @@ class GiftDetailScreen extends StatefulWidget {
 class _GiftDetailScreenState extends State<GiftDetailScreen> {
   final GiftService _giftService = giftService;
   final AuthApi _authApi = AuthApi();
+  final GiftRemoteService _remote = GiftRemoteService();
   late Gift _gift;
   bool _loading = false;
 
@@ -52,52 +54,27 @@ class _GiftDetailScreenState extends State<GiftDetailScreen> {
       return;
     }
     setState(() => _loading = true);
-
-    if (!_gift.isReserved) {
-      final updated = Gift(
-        id: _gift.id,
-        name: _gift.name,
-        description: _gift.description,
-        imageUrl: _gift.imageUrl,
-        imageData: _gift.imageData,
-        productLink: _gift.productLink,
-        price: _gift.price,
-        quantity: _gift.quantity,
-        hostId: _gift.hostId,
-        isReserved: true,
-        reservedBy: user.id,
-        createdAt: _gift.createdAt,
-      );
-      _giftService.update(_gift.id!, updated);
-      _gift = updated;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Regalo reservado'), backgroundColor: Color(0xFFE91E8C)));
-    } else {
-      // cancel only if same user
-      if (_gift.reservedBy != null && _gift.reservedBy == user.id) {
-        final updated = Gift(
-          id: _gift.id,
-          name: _gift.name,
-          description: _gift.description,
-          imageUrl: _gift.imageUrl,
-          imageData: _gift.imageData,
-          productLink: _gift.productLink,
-          price: _gift.price,
-          quantity: _gift.quantity,
-          hostId: _gift.hostId,
-          isReserved: false,
-          reservedBy: null,
-          createdAt: _gift.createdAt,
-        );
-        _giftService.update(_gift.id!, updated);
+    try {
+      if (_gift.id == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Regalo sin id remoto')));
+      } else if (!_gift.isReserved) {
+        final updated = await _remote.reserve(_gift.id!, userId: user.id);
         _gift = updated;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reserva cancelada'), backgroundColor: Color(0xFFE91E8C)));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Regalo reservado'), backgroundColor: Color(0xFFE91E8C)));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No puedes cancelar: reserva hecha por otra persona')));
+        if (_gift.reservedBy != null && _gift.reservedBy == user.id) {
+          final updated = await _remote.cancel(_gift.id!, userId: user.id);
+          _gift = updated;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reserva cancelada'), backgroundColor: Color(0xFFE91E8C)));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No puedes cancelar: reserva hecha por otra persona')));
+        }
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error remoto: $e')));
+    } finally {
+      setState(() => _loading = false);
     }
-
-    await _refreshLocal();
-    setState(() => _loading = false);
   }
 
   @override
@@ -105,7 +82,8 @@ class _GiftDetailScreenState extends State<GiftDetailScreen> {
     final user = _authApi.getCurrentUser();
     final canCancel = _gift.isReserved && _gift.reservedBy != null && user != null && _gift.reservedBy == user.id;
     final canReserve = !_gift.isReserved && user != null;
-    final isHost = user != null && user.id == _gift.hostId;
+    // admin puede editar/eliminar
+    final isAdmin = user != null && user.role == 'admin';
 
     return Scaffold(
       appBar: AppBar(
@@ -193,7 +171,7 @@ class _GiftDetailScreenState extends State<GiftDetailScreen> {
             const SizedBox(height: 24),
 
             // Action area: hosts see edit/delete; guests see reserve/cancel
-            if (isHost)
+            if (isAdmin)
               Row(
                 children: [
                   Expanded(

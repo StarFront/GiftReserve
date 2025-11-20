@@ -3,6 +3,7 @@ import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/screens/add_gift_screen.dart';
 import 'package:giflist/screens/gift_detail_screen.dart';
 import 'package:giflist/services/gift_service.dart';
+import 'package:giflist/services/gift_remote_service.dart';
 
 class ViewGiftsScreen extends StatefulWidget {
   const ViewGiftsScreen({super.key});
@@ -12,9 +13,11 @@ class ViewGiftsScreen extends StatefulWidget {
 }
 
 class _ViewGiftsScreenState extends State<ViewGiftsScreen> {
-  final GiftService _giftService = giftService;
-
+  final GiftService _giftService = giftService; // fallback local
+  final GiftRemoteService _remote = GiftRemoteService();
   List<Gift> _gifts = [];
+  bool _loading = false;
+  String? _error;
 
   @override
   void initState() {
@@ -22,17 +25,32 @@ class _ViewGiftsScreenState extends State<ViewGiftsScreen> {
     _loadGifts();
   }
 
-  void _loadGifts() {
+  Future<void> _loadGifts() async {
     setState(() {
-      _gifts = _giftService.getAll();
+      _loading = true;
+      _error = null;
     });
+    try {
+      final list = await _remote.list();
+      if (!mounted) return;
+      setState(() => _gifts = list);
+    } catch (e) {
+      // fallback local
+      setState(() {
+        _gifts = _giftService.getAll();
+        _error = 'Remoto falló: $e';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _onDelete(String id) {
+    // TODO: endpoint delete remoto (MVP: sólo local si existe)
     _giftService.delete(id);
     _loadGifts();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Regalo eliminado'), backgroundColor: Color(0xFFE91E8C)),
+      const SnackBar(content: Text('Regalo eliminado (local)'), backgroundColor: Color(0xFFE91E8C)),
     );
   }
 
@@ -150,33 +168,35 @@ class _ViewGiftsScreenState extends State<ViewGiftsScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _gifts.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.card_giftcard, size: 64, color: Colors.grey),
-                    const SizedBox(height: 12),
-                    const Text('No hay regalos aún', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE91E8C)),
-                      onPressed: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddGiftScreen()));
-                        _loadGifts();
-                      },
-                      child: const Text('Agregar primer regalo'),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : (_gifts.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.card_giftcard, size: 64, color: Colors.grey),
+                        const SizedBox(height: 12),
+                        Text(_error != null ? '$_error' : 'No hay regalos aún', style: const TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE91E8C)),
+                          onPressed: () async {
+                            await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddGiftScreen()));
+                            _loadGifts();
+                          },
+                          child: const Text('Agregar regalo'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: () async => _loadGifts(),
-                child: ListView.builder(
-                  itemCount: _gifts.length,
-                  itemBuilder: (_, i) => _buildTile(_gifts[i]),
-                ),
-              ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async => _loadGifts(),
+                    child: ListView.builder(
+                      itemCount: _gifts.length,
+                      itemBuilder: (_, i) => _buildTile(_gifts[i]),
+                    ),
+                  )),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFFE91E8C),

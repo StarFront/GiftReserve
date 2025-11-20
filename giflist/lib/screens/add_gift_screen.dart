@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/services/gift_service.dart';
+import 'package:giflist/services/gift_remote_service.dart';
 
 class AddGiftScreen extends StatefulWidget {
   final Gift? giftToEdit;
@@ -16,7 +17,8 @@ class AddGiftScreen extends StatefulWidget {
 
 class _AddGiftScreenState extends State<AddGiftScreen> {
   final AuthApi _authApi = AuthApi();
-  final GiftService _giftService = giftService;
+  final GiftService _giftService = giftService; // fallback local (temporal)
+  final GiftRemoteService _remote = GiftRemoteService();
 
   // Controllers
   final _nameController = TextEditingController();
@@ -108,17 +110,26 @@ class _AddGiftScreenState extends State<AddGiftScreen> {
         productLink: _linkController.text.isNotEmpty ? _linkController.text : null,
         price: parsedPrice,
         quantity: widget.giftToEdit?.quantity ?? 1,
-        hostId: user.id,
-        imageUrl: _selectedImageName,
-        imageData: _selectedImageBytes,
+        imageUrl: _selectedImageName, // nombre original para backend
+        imageData: _selectedImageBytes, // bytes para subida presignada
         isReserved: widget.giftToEdit?.isReserved ?? false,
         reservedBy: widget.giftToEdit?.reservedBy,
       );
 
       if (widget.giftToEdit != null && widget.giftToEdit!.id != null) {
+        // TODO: endpoint update remoto
         _giftService.update(widget.giftToEdit!.id!, gift);
       } else {
-        _giftService.add(gift);
+        // Crear en API remota (MVP: sin imagen binaria)
+        try {
+          await _remote.create(gift); // sube metadata y luego imagen si hay bytes
+        } catch (e) {
+          // fallback local si remoto falla
+          _giftService.add(gift);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Aviso: se guardó localmente por error remoto: $e')),
+          );
+        }
       }
 
       if (mounted) {

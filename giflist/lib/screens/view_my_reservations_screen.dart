@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/gift_service.dart';
+import 'package:giflist/services/gift_remote_service.dart';
 import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/gift_detail_screen.dart';
 
@@ -12,7 +13,8 @@ class ViewMyReservationsScreen extends StatefulWidget {
 }
 
 class _ViewMyReservationsScreenState extends State<ViewMyReservationsScreen> {
-  final GiftService _giftService = giftService;
+  final GiftService _giftService = giftService; // fallback
+  final GiftRemoteService _remote = GiftRemoteService();
   final AuthApi _authApi = AuthApi();
   List<Gift> _my = [];
 
@@ -22,15 +24,20 @@ class _ViewMyReservationsScreenState extends State<ViewMyReservationsScreen> {
     _loadMy();
   }
 
-  void _loadMy() {
+  Future<void> _loadMy() async {
     final user = _authApi.getCurrentUser();
     if (user == null) {
       setState(() => _my = []);
       return;
     }
-    setState(() {
-      _my = _giftService.getAll().where((g) => g.reservedBy == user.id).toList();
-    });
+    try {
+      final list = await _remote.list();
+      if (!mounted) return;
+      setState(() => _my = list.where((g) => g.reservedBy == user.id).toList());
+    } catch (e) {
+      // fallback local
+      setState(() => _my = _giftService.getAll().where((g) => g.reservedBy == user.id).toList());
+    }
   }
 
   void _cancelReservation(Gift g) {
@@ -40,23 +47,21 @@ class _ViewMyReservationsScreenState extends State<ViewMyReservationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No puedes cancelar esta reserva')));
       return;
     }
-    final updated = Gift(
-      id: g.id,
-      name: g.name,
-      description: g.description,
-      imageUrl: g.imageUrl,
-      imageData: g.imageData,
-      productLink: g.productLink,
-      price: g.price,
-      quantity: g.quantity,
-      hostId: g.hostId,
-      isReserved: false,
-      reservedBy: null,
-      createdAt: g.createdAt,
-    );
-    _giftService.update(g.id!, updated);
-    _loadMy();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reserva cancelada'), backgroundColor: Color(0xFFE91E8C)));
+    if (g.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Regalo sin id remoto')));
+      return;
+    }
+    () async {
+      try {
+        await _remote.cancel(g.id!, userId: user.id);
+        setState(() {
+          _my.removeWhere((x) => x.id == g.id);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reserva cancelada'), backgroundColor: Color(0xFFE91E8C)));
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error remoto: $e')));
+      }
+    }();
   }
 
   Widget _tile(Gift g) {

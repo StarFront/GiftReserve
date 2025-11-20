@@ -13,7 +13,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = _authApi.getCurrentUser();
-    final isHost = user?.role == 'host';
+    final isAdmin = user?.role == 'admin';
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -21,27 +21,20 @@ class HomeScreen extends StatelessWidget {
         title: const Text('GiftList'),
         elevation: 0,
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                _authApi.logout();
-                Navigator.of(context).pushReplacementNamed('/auth');
-              }
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              _authApi.logout();
+              Navigator.of(context).pushReplacementNamed('/auth');
             },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'logout',
-                child: Text('Cerrar sesión'),
-              ),
-            ],
           ),
         ],
       ),
-      body: isHost ? _buildHostDashboard(context, user!.name) : _buildGuestDashboard(context, user!.name),
+      body: isAdmin ? _buildAdminDashboard(context, user!.name) : _buildGuestDashboard(context, user!.name),
     );
   }
-
-  Widget _buildHostDashboard(BuildContext context, String name) {
+  Widget _buildAdminDashboard(BuildContext context, String name) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giflist/models/gift_model.dart';
 import 'package:giflist/services/gift_service.dart';
+import 'package:giflist/services/gift_remote_service.dart';
 import 'package:giflist/services/auth_api.dart';
 import 'package:giflist/screens/gift_detail_screen.dart';
 
@@ -12,7 +13,8 @@ class ViewGiftsGuestScreen extends StatefulWidget {
 }
 
 class _ViewGiftsGuestScreenState extends State<ViewGiftsGuestScreen> {
-  final GiftService _giftService = giftService;
+  final GiftService _giftService = giftService; // fallback temporal
+  final GiftRemoteService _remote = GiftRemoteService();
   final AuthApi _authApi = AuthApi();
   List<Gift> _gifts = [];
 
@@ -22,73 +24,57 @@ class _ViewGiftsGuestScreenState extends State<ViewGiftsGuestScreen> {
     _loadGifts();
   }
 
-  void _loadGifts() {
-    setState(() {
-      _gifts = _giftService.getAll();
-    });
+  Future<void> _loadGifts() async {
+    try {
+      final list = await _remote.list();
+      if (!mounted) return;
+      setState(() => _gifts = list);
+    } catch (e) {
+      // fallback local si remoto falla
+      setState(() => _gifts = _giftService.getAll());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Aviso: lista local por error remoto: $e')),
+      );
+    }
   }
 
   void _toggleReservation(Gift g) {
     final user = _authApi.getCurrentUser();
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes iniciar sesión para reservar')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inicia sesión para reservar')));
       return;
     }
-
-    if (!g.isReserved) {
-      // Reservar: marcar y asignar reservedBy
-      final updated = Gift(
-        id: g.id,
-        name: g.name,
-        description: g.description,
-        imageUrl: g.imageUrl,
-        imageData: g.imageData,
-        productLink: g.productLink,
-        price: g.price,
-        quantity: g.quantity,
-        hostId: g.hostId,
-        isReserved: true,
-        reservedBy: user.id,
-        createdAt: g.createdAt,
-      );
-      _giftService.update(g.id!, updated);
-      _loadGifts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Regalo reservado'), backgroundColor: Color(0xFFE91E8C)),
-      );
+    // Evitar doble taps
+    if (g.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Regalo sin id remoto')));
       return;
     }
-
-    // Cancelar: sólo si yo reservé
-    if (g.reservedBy != null && g.reservedBy == user.id) {
-      final updated = Gift(
-        id: g.id,
-        name: g.name,
-        description: g.description,
-        imageUrl: g.imageUrl,
-        imageData: g.imageData,
-        productLink: g.productLink,
-        price: g.price,
-        quantity: g.quantity,
-        hostId: g.hostId,
-        isReserved: false,
-        reservedBy: null,
-        createdAt: g.createdAt,
-      );
-      _giftService.update(g.id!, updated);
-      _loadGifts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reserva cancelada'), backgroundColor: Color(0xFFE91E8C)),
-      );
-      return;
-    }
-
-    // Si llegó aquí, otro usuario reservó
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No puedes cancelar: reserva hecha por otra persona')),
-    );
+    () async {
+      try {
+        Gift updated;
+        if (!g.isReserved) {
+          updated = await _remote.reserve(g.id!, userId: user.id);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservado')));
+        } else {
+          // Solo permitir cancelar si reservado por mismo usuario (MVP: verificación local)
+          if (g.reservedBy != null && g.reservedBy == user.id) {
+            updated = await _remote.cancel(g.id!, userId: user.id);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reserva cancelada')));
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No puedes cancelar esta reserva')));
+            return;
+          }
+        }
+        setState(() {
+          final idx = _gifts.indexWhere((x) => x.id == g.id);
+          if (idx != -1) {
+            _gifts[idx] = updated;
+          }
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error remoto reserva: $e')));
+      }
+    }();
   }
 
   Widget _buildTile(Gift g) {

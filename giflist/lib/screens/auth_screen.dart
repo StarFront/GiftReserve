@@ -113,10 +113,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                 content: Text("Cuenta verificada ✔️"),
                               ),
                             );
-                            await _authApi.setCurrentUser(
-                              email: email,
-                              name: email.split('@').first,
-                            );
                             // Navegar al home después de verificar la cuenta
                             Navigator.pushReplacementNamed(context, '/home');
                           }
